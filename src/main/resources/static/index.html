@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>API - Locação de Veículos</title>
+<style>
+body{font-family:Arial,sans-serif;max-width:1000px;margin:30px auto;padding:0 20px;background:#f5f5f5;color:#222}
+h1{margin-bottom:5px}.sub{color:#666}
+.card{background:white;padding:20px;border-radius:12px;margin:18px 0;box-shadow:0 2px 8px #0001}
+form{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+input,select,button{padding:10px;border:1px solid #ccc;border-radius:7px;font-size:15px}
+button{cursor:pointer;background:#222;color:#fff}.danger{background:#b00020}.edit{background:#555}
+.full{grid-column:1/-1}
+table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px solid #ddd;text-align:left}
+.actions{display:flex;gap:6px}.method{font-weight:bold}
+</style>
+</head>
+<body>
+<h1>Vehiculos</h1>
+
+<div class="card">
+<h2 id="form-title">Registrar Vehiculos</h2>
+<form id="vehicle-form">
+<input type="hidden" id="id">
+<input id="placa" placeholder="Placa" required>
+<input id="modelo" placeholder="Modelo" required>
+<select id="tipo" required><option value="">Tipo</option><option>Auto</option><option>Moto</option><option>Utilitário</option></select>
+<input id="valorDiaria" type="number" min="0" step="0.01" placeholder="Valor diario" required>
+<select id="disponivel" required><option value="true">Disponible</option><option value="false">No disponible</option></select>
+<button class="full" type="submit">Guardar</button>
+</form>
+</div>
+
+<div class="card">
+<h2>Vehiculo</h2>
+<button onclick="carregar()">Actualizar lista</button>
+<table><thead><tr><th>ID</th><th>Placa</th><th>Modelo</th><th>Tipo</th><th>Diario</th><th>Estatus</th><th>Acciones</th></tr></thead>
+<tbody id="lista"></tbody></table>
+</div>
+
+<script>
+const API='/vehicles';
+const $=id=>document.getElementById(id);
+
+async function carregar(){
+  const res=await fetch(API);
+  const dados=await res.json();
+  $('lista').innerHTML=dados.map(v=>`<tr>
+    <td>${v.id}</td><td>${v.placa}</td><td>${v.modelo}</td><td>${v.tipo}</td>
+    <td>R$ ${Number(v.valorDiaria).toFixed(2)}</td>
+    <td>${v.disponivel?'Disponível':'Indisponível'}</td>
+    <td class="actions"><button class="edit" onclick='editar(${JSON.stringify(v)})'>Editar</button>
+    <button class="danger" onclick="excluir(${v.id})">Borrar</button></td>
+  </tr>`).join('');
+}
+
+$('vehicle-form').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const id=$('id').value;
+  const body={
+    placa:$('placa').value,
+    modelo:$('modelo').value,
+    tipo:$('tipo').value,
+    valorDiaria:Number($('valorDiaria').value),
+    disponivel:$('disponible').value==='true'
+  };
+  const res=await fetch(id?`${API}/${id}`:API,{
+    method:id?'PUT':'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)
+  });
+  if(!res.ok){alert('Erro ao salvar.');return;}
+  limpar(); carregar();
+});
+
+function editar(v){
+  $('id').value=v.id;$('placa').value=v.placa;$('modelo').value=v.modelo;
+  $('tipo').value=v.tipo;$('valorDiaria').value=v.valorDiaria;
+  $('disponivel').value=String(v.disponivel);
+  $('form-title').textContent='Editar veículo — PUT';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+async function excluir(id){
+  if(!confirm('Excluir este veículo?')) return;
+  const res=await fetch(`${API}/${id}`,{method:'DELETE'});
+  if(!res.ok){alert('Erro ao excluir.');return;}
+  carregar();
+}
+function limpar(){
+  $('vehicle-form').reset();$('id').value='';
+  $('disponivel').value='true';$('form-title').textContent='Cadastrar veículo — POST';
+}
+carregar();
+</script>
+</body>
+</html>
